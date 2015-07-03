@@ -1,6 +1,9 @@
 
 {{$NEXT}}
 
+0.03      2015-07-03 16:55:43+02:00 Europe/Berlin
+      - Remove duplicate (auto-generated) POD sections
+
 0.02      2015-07-03 15:05:58+02:00 Europe/Berlin
       - Updated distribution metadata
       - Updated Dist::Zilla configuration

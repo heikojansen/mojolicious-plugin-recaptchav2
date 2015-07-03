@@ -111,14 +111,10 @@ __END__
 
 =pod
 
-=head1 NAME
-
-Mojolicious::Plugin::ReCAPTCHAv2 - use Google No Captcha reCaptcha (v2) service for Mojolicious apps
+=head1 SYNOPSIS
 
 B<WARNING> This module is considered experimental! Tests are mostly missing and it has not been used
 in production so far!
-
-=head1 SYNOPSIS
 
     use Mojolicious::Plugin::ReCAPTCHAv2;
 
@@ -305,17 +301,13 @@ Somebody tinkered with the request data somewhere.
 
 =back
 
-=head1 AUTHOR
+=head1 SEE ALSO
 
-Heiko Jansen <hjansen@cpan.org>
+=over 4
 
-=head1 COPYRIGHT AND LICENSE
+=item L<Mojolicious>
 
-This software is Copyright (c) 2015 by Heiko Jansen <hjansen@cpan.org>
+=item L<https://developers.google.com/recaptcha/>
 
-This is free software, licensed under:
-
-  The GNU General Public License, Version 3, June 2007
-
-=cut
+=back
 
