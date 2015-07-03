@@ -5,7 +5,7 @@ META.yml
 Makefile.PL
 README
 
-lib/Mojolicious/Plugin/Captcha/ReCAPTCHAv2.pm
+lib/Mojolicious/Plugin/ReCAPTCHAv2.pm
 
 t/00-load.t
 t/99_check_manifest.t
