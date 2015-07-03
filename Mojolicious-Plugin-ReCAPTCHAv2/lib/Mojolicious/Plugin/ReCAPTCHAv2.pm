@@ -6,9 +6,6 @@ use Mojo::Base 'Mojolicious::Plugin';
 use Mojo::JSON qw();
 use Mojo::UserAgent qw();
 
-our $VERSION = 0.01;
-$VERSION = eval $VERSION;
-
 has conf => sub{ +{} };
 has verification_errors => sub{ +[] };
 
@@ -120,10 +117,6 @@ Mojolicious::Plugin::ReCAPTCHAv2 - use Google No Captcha reCaptcha (v2) service 
 
 B<WARNING> This module is considered experimental! Tests are mostly missing and it has not been used
 in production so far!
-
-=head1 VERSION
-
-version 0.01
 
 =head1 SYNOPSIS
 

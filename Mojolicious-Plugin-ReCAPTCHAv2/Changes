@@ -1,3 +1,9 @@
 
 {{$NEXT}}
+
+0.02      2015-07-03 15:05:58+02:00 Europe/Berlin
+      - Updated distribution metadata
+      - Updated Dist::Zilla configuration
+
+0.01
       - initial version
