@@ -1,0 +1,13 @@
+Changes
+LICENSE
+MANIFEST
+META.yml
+Makefile.PL
+README
+
+lib/Mojolicious/Plugin/Captcha/ReCAPTCHAv2.pm
+
+t/00-load.t
+t/99_check_manifest.t
+t/author-critic.t
+
