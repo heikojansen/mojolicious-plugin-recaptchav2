@@ -122,7 +122,7 @@ in production so far!
         my $self = shift;
 
         $self->plugin('ReCAPTCHAv2', { 
-            site_key      => 'site-key-embedded-in-public-html',                 # required
+            sitekey      => 'site-key-embedded-in-public-html',                 # required
             secret        => 'key-used-in-internal-verification-requests',       # required
             # api_timeout => 10,                                                 # optional
             # api_url     => 'https://www.google.com/recaptcha/api/siteverify',  # optional
