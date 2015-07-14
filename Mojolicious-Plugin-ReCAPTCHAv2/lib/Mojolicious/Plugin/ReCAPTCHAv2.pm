@@ -11,8 +11,8 @@ has verification_errors => sub{ +[] };
 
 sub register {
 	my $plugin = shift;
-	my $app	= shift;
-	my $conf   = shift || {};
+	my $app	 = shift;
+	my $conf = shift || {};
 
 	die ref($plugin), ": need sitekey and secret!\n"
 	        unless $conf->{'sitekey'} and $conf->{'secret'};
