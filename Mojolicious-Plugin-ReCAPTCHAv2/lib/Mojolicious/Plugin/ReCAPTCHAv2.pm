@@ -15,7 +15,7 @@ sub register {
 	my $conf   = shift || {};
 
 	die ref($plugin), ": need sitekey and secret!\n"
-		unless $conf->{'sitekey'} and $conf->{'secret'};
+	        unless $conf->{'sitekey'} and $conf->{'secret'};
 
 	$conf->{'api_url'}     //= 'https://www.google.com/recaptcha/api/siteverify';
 	$conf->{'api_timeout'} //= 10;
@@ -25,7 +25,7 @@ sub register {
 	$app->helper(
 		recaptcha_get_html => sub {
 			my $c		= shift;
-			my $language = $_[0] ? shift : undef;
+			my $language    = $_[0] ? shift : undef;
 
 			my %data_attr = map { $_ => $plugin->conf->{$_} } grep { index( $_, 'api_' ) != 0 } keys %{ $plugin->conf };
 
@@ -34,19 +34,18 @@ sub register {
 
 			my $hl = '';
 			if ( defined $language and $language ) {
-				$hl = $language;
+			    $hl = $language;
 			}
 			elsif ( exists $data_attr{'language'} ) {
-				$hl = delete $data_attr{'language'};
+			    $hl = delete $data_attr{'language'};
 			}
 
 			my $output = $c->render_to_string(
 				inline => q|<script src="https://www.google.com/recaptcha/api.js?hl=<%= $hl %>" async defer></script>
-<div class="g-recaptcha"<% foreach my $k ( keys %{$attr} ) { %> data-<%= $k %>="<%= $attr->{$k} %>"<% } %>></div>|,
+<div class="g-recaptcha"<% foreach my $k ( sort keys %{$attr} ) { %> data-<%= $k %>="<%= $attr->{$k} %>"<% } %>></div>|,
 				hl	 => $hl,
 				attr   => \%data_attr,
 			);
-									 
 			return $output;
 		}
 	);
@@ -89,17 +88,17 @@ sub register {
 
 			}
 			else {
-				$c->app->log->error( 'Retrieving captcha verifcation failed: HTTP ' . $res->code );
-				$c->app->log->error( 'Request  was: ' . $tx->req->to_string );
+			        $c->app->log->error( 'Retrieving captcha verifcation failed: HTTP ' . $res->code );
+			        $c->app->log->error( 'Request  was: ' . $tx->req->to_string );
 				$c->app->log->error( 'Response was: ' . $tx->res->to_string );
 				return -1;
 			}
 		}
 	);
 	$app->helper(
-		recaptcha_get_errors => sub {
-			return $plugin->verification_errors;
-		}
+	        recaptcha_get_errors => sub {
+		    return $plugin->verification_errors;
+	        }
 	);
 
 	return;
@@ -113,15 +112,12 @@ __END__
 
 =head1 SYNOPSIS
 
-B<WARNING> This module is considered experimental! Tests are mostly missing and it has not been used
-in production so far!
-
     use Mojolicious::Plugin::ReCAPTCHAv2;
 
     sub startup {
         my $self = shift;
 
-        $self->plugin('ReCAPTCHAv2', { 
+        $self->plugin('ReCAPTCHAv2', {
             sitekey       => 'site-key-embedded-in-public-html',                 # required
             secret        => 'key-used-in-internal-verification-requests',       # required
             # api_timeout => 10,                                                 # optional
@@ -217,7 +213,7 @@ in the synopsis.
 For the meaning of these please refer to L<https://developers.google.com/recaptcha/docs/display#config>.
 
 =head1 METHODS
- 
+
 L<Mojolicious::Plugin::ReCAPTCHAv2> inherits all methods from L<Mojolicious::Plugin>
 and implements no extra ones.
 
@@ -228,7 +224,7 @@ L<Mojolicious::Plugin::ReCAPTCHAv2> makes the following helpers available:
 =head2 recaptcha_get_html
 
 Returns a HTML fragment with the widget codeM; you will probably want to put
-this in the stash, since it has to be inserted in your HTML form element 
+this in the stash, since it has to be inserted in your HTML form element
 when processing the template.
 
 =head2 recaptcha_verify
@@ -273,7 +269,7 @@ The array can contain these error codes:
 
 =item C<missing-input-secret>
 
-The secret parameter is missing. 
+The secret parameter is missing.
 
 This should not happen, since registering the plugin requires a C<secret>
 configuration param which is then automatically included in the verification
