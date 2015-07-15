@@ -41,10 +41,10 @@ sub register {
 			}
 
 			my $output = $c->render_to_string(
-				inline => q|<script src="https://www.google.com/recaptcha/api.js?hl=<%= $hl %>" async defer></script>
+				inline  => q|<script src="https://www.google.com/recaptcha/api.js?hl=<%= $hl %>" async defer></script>
 <div class="g-recaptcha"<% foreach my $k ( sort keys %{$attr} ) { %> data-<%= $k %>="<%= $attr->{$k} %>"<% } %>></div>|,
-				hl	 => $hl,
-				attr   => \%data_attr,
+				hl      => $hl,
+				attr    => \%data_attr,
 			);
 			return $output;
 		}
