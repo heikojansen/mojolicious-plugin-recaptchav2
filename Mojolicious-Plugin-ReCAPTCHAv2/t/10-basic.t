@@ -1,8 +1,8 @@
 #!perl
 use Mojo::Base -strict;
-use Test::More;
 use Mojolicious::Lite;
 use Test::Mojo;
+use Test::More;
 
 plugin 'ReCAPTCHAv2' => {
     'sitekey'  => 'key',
@@ -14,10 +14,14 @@ get '/' => sub {
     $c->render(text => $c->recaptcha_get_html);
 };
 
-get '/errors' => sub {
+get '/test' => sub {
     my $c = shift;
-    $c->recaptcha_verify;
-    $c->render(json => $c->recaptcha_get_errors);
+    $c->render(
+        json => {
+            verify => $c->recaptcha_verify,
+            errors => $c->recaptcha_get_errors,
+        }
+    );
 };
 
 my $t = Test::Mojo->new;
@@ -31,8 +35,10 @@ $t
 RECAPTCHA
 
 $t
-->get_ok('/errors' => {} => form => {'g-recaptcha-response' => 'foo'} )
+->get_ok('/test' => {} => form => {'g-recaptcha-response' => 'foo'} )
 ->status_is(200)
-->content_is('["invalid-input-response","invalid-input-secret"]');
+->json_is('/verify'   => 0)
+->json_is('/errors/0' => 'invalid-input-response')
+->json_is('/errors/1' => 'invalid-input-secret');
 
 done_testing;
