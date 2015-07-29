@@ -1,4 +1,6 @@
 package Mojolicious::Plugin::ReCAPTCHAv2;
+# vim:syntax=perl:tabstop=4:number:noexpandtab:
+
 use Mojo::Base 'Mojolicious::Plugin';
 
 # ABSTRACT: use Googles "No CAPTCHA reCAPCTHA" (reCAPTCHA v2) service in Mojolicious apps
@@ -11,11 +13,11 @@ has verification_errors => sub{ +[] };
 
 sub register {
 	my $plugin = shift;
-	my $app	 = shift;
-	my $conf = shift || {};
+	my $app    = shift;
+	my $conf   = shift || {};
 
 	die ref($plugin), ": need sitekey and secret!\n"
-	        unless $conf->{'sitekey'} and $conf->{'secret'};
+		unless $conf->{'sitekey'} and $conf->{'secret'};
 
 	$conf->{'api_url'}     //= 'https://www.google.com/recaptcha/api/siteverify';
 	$conf->{'api_timeout'} //= 10;
@@ -24,8 +26,8 @@ sub register {
 
 	$app->helper(
 		recaptcha_get_html => sub {
-			my $c		= shift;
-			my $language    = $_[0] ? shift : undef;
+			my $c         = shift;
+			my $language  = $_[0] ? shift : undef;
 
 			my %data_attr = map { $_ => $plugin->conf->{$_} } grep { index( $_, 'api_' ) != 0 } keys %{ $plugin->conf };
 
@@ -34,17 +36,17 @@ sub register {
 
 			my $hl = '';
 			if ( defined $language and $language ) {
-			    $hl = $language;
+				$hl = $language;
 			}
 			elsif ( exists $data_attr{'language'} ) {
-			    $hl = delete $data_attr{'language'};
+				$hl = delete $data_attr{'language'};
 			}
 
 			my $output = $c->render_to_string(
-				inline  => q|<script src="https://www.google.com/recaptcha/api.js?hl=<%= $hl %>" async defer></script>
+				inline => q|<script src="https://www.google.com/recaptcha/api.js?hl=<%= $hl %>" async defer></script>
 <div class="g-recaptcha"<% foreach my $k ( sort keys %{$attr} ) { %> data-<%= $k %>="<%= $attr->{$k} %>"<% } %>></div>|,
-				hl      => $hl,
-				attr    => \%data_attr,
+				hl     => $hl,
+				attr   => \%data_attr,
 			);
 			return $output;
 		}
@@ -59,7 +61,7 @@ sub register {
 				secret   => $plugin->conf->{'secret'},
 			);
 
-			my $url	    = $plugin->conf->{'api_url'};
+			my $url     = $plugin->conf->{'api_url'};
 			my $timeout = $plugin->conf->{'api_timeout'};
 
 			my $ua = Mojo::UserAgent->new();
@@ -88,17 +90,17 @@ sub register {
 
 			}
 			else {
-			        $c->app->log->error( 'Retrieving captcha verifcation failed: HTTP ' . $res->code );
-			        $c->app->log->error( 'Request  was: ' . $tx->req->to_string );
+				$c->app->log->error( 'Retrieving captcha verifcation failed: HTTP ' . $res->code );
+				$c->app->log->error( 'Request  was: ' . $tx->req->to_string );
 				$c->app->log->error( 'Response was: ' . $tx->res->to_string );
 				return -1;
 			}
 		}
 	);
 	$app->helper(
-	        recaptcha_get_errors => sub {
-		    return $plugin->verification_errors;
-	        }
+		recaptcha_get_errors => sub {
+			return $plugin->verification_errors;
+		}
 	);
 
 	return;
@@ -306,4 +308,3 @@ Somebody tinkered with the request data somewhere.
 =item L<https://developers.google.com/recaptcha/>
 
 =back
-
