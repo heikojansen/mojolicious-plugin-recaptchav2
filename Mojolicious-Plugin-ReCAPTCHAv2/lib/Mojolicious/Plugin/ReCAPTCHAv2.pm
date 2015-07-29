@@ -1,4 +1,6 @@
 package Mojolicious::Plugin::ReCAPTCHAv2;
+# vim:syntax=perl:tabstop=4:number:noexpandtab:
+
 use Mojo::Base 'Mojolicious::Plugin';
 
 # ABSTRACT: use Googles "No CAPTCHA reCAPCTHA" (reCAPTCHA v2) service in Mojolicious apps
@@ -11,7 +13,7 @@ has verification_errors => sub{ +[] };
 
 sub register {
 	my $plugin = shift;
-	my $app	= shift;
+	my $app    = shift;
 	my $conf   = shift || {};
 
 	die ref($plugin), ": need sitekey and secret!\n"
@@ -24,8 +26,8 @@ sub register {
 
 	$app->helper(
 		recaptcha_get_html => sub {
-			my $c		= shift;
-			my $language = $_[0] ? shift : undef;
+			my $c         = shift;
+			my $language  = $_[0] ? shift : undef;
 
 			my %data_attr = map { $_ => $plugin->conf->{$_} } grep { index( $_, 'api_' ) != 0 } keys %{ $plugin->conf };
 
@@ -42,11 +44,10 @@ sub register {
 
 			my $output = $c->render_to_string(
 				inline => q|<script src="https://www.google.com/recaptcha/api.js?hl=<%= $hl %>" async defer></script>
-<div class="g-recaptcha"<% foreach my $k ( keys %{$attr} ) { %> data-<%= $k %>="<%= $attr->{$k} %>"<% } %>></div>|,
-				hl	 => $hl,
+<div class="g-recaptcha"<% foreach my $k ( sort keys %{$attr} ) { %> data-<%= $k %>="<%= $attr->{$k} %>"<% } %>></div>|,
+				hl     => $hl,
 				attr   => \%data_attr,
 			);
-									 
 			return $output;
 		}
 	);
@@ -60,7 +61,7 @@ sub register {
 				secret   => $plugin->conf->{'secret'},
 			);
 
-			my $url	    = $plugin->conf->{'api_url'};
+			my $url     = $plugin->conf->{'api_url'};
 			my $timeout = $plugin->conf->{'api_timeout'};
 
 			my $ua = Mojo::UserAgent->new();
@@ -113,16 +114,13 @@ __END__
 
 =head1 SYNOPSIS
 
-B<WARNING> This module is considered experimental! Tests are mostly missing and it has not been used
-in production so far!
-
     use Mojolicious::Plugin::ReCAPTCHAv2;
 
     sub startup {
         my $self = shift;
 
-        $self->plugin('ReCAPTCHAv2', { 
-            site_key      => 'site-key-embedded-in-public-html',                 # required
+        $self->plugin('ReCAPTCHAv2', {
+            sitekey       => 'site-key-embedded-in-public-html',                 # required
             secret        => 'key-used-in-internal-verification-requests',       # required
             # api_timeout => 10,                                                 # optional
             # api_url     => 'https://www.google.com/recaptcha/api/siteverify',  # optional
@@ -217,7 +215,7 @@ in the synopsis.
 For the meaning of these please refer to L<https://developers.google.com/recaptcha/docs/display#config>.
 
 =head1 METHODS
- 
+
 L<Mojolicious::Plugin::ReCAPTCHAv2> inherits all methods from L<Mojolicious::Plugin>
 and implements no extra ones.
 
@@ -228,7 +226,7 @@ L<Mojolicious::Plugin::ReCAPTCHAv2> makes the following helpers available:
 =head2 recaptcha_get_html
 
 Returns a HTML fragment with the widget codeM; you will probably want to put
-this in the stash, since it has to be inserted in your HTML form element 
+this in the stash, since it has to be inserted in your HTML form element
 when processing the template.
 
 =head2 recaptcha_verify
@@ -273,7 +271,7 @@ The array can contain these error codes:
 
 =item C<missing-input-secret>
 
-The secret parameter is missing. 
+The secret parameter is missing.
 
 This should not happen, since registering the plugin requires a C<secret>
 configuration param which is then automatically included in the verification
@@ -310,4 +308,3 @@ Somebody tinkered with the request data somewhere.
 =item L<https://developers.google.com/recaptcha/>
 
 =back
-
