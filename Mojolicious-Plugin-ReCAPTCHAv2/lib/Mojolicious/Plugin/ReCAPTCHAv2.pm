@@ -80,7 +80,8 @@ sub register {
 					$c->app->log->error( 'Decoding JSON response failed: ' . $@ );
 					$c->app->log->error( 'Request  was: ' . $tx->req->to_string );
 					$c->app->log->error( 'Response was: ' . $tx->res->to_string );
-					return -1;
+					$plugin->verification_errors( ["x-unparseable-data-received"] );
+					return 0;
 				}
 				unless ( $json->{'success'} ) {
 					$plugin->verification_errors( $json->{'error-codes'} // [] );
@@ -92,7 +93,8 @@ sub register {
 				$c->app->log->error( 'Retrieving captcha verifcation failed: HTTP ' . $res->code );
 				$c->app->log->error( 'Request  was: ' . $tx->req->to_string );
 				$c->app->log->error( 'Response was: ' . $tx->res->to_string );
-				return -1;
+				$plugin->verification_errors( ["x-http-communication-failed"] );
+				return 0;
 			}
 		}
 	);
@@ -140,18 +142,16 @@ in production so far!
     # now use stashed value in your HTML template, i.e.: <form..>...<% $captcha %>...</form>
 
     # on incoming request
-    my $verify = $app->recaptcha_verify;
-    if ( $verify < 0 ) {
-        # internal error - request failed or invalid json
-    }
-    elsif ( $verify > 0 ) {
+    if ( $app->recaptcha_verify ) {
         # success: probably human
+        ...
     }
     else {
         # fail: probably bot, but may also be a
         # processing error
+
         if ( my $err = $app->recaptcha_get_errors ) {
-            # processing failed
+            # processing failed, inspect error codes
             foreach my $e ( @{$err} ) {
                 ...
             }
@@ -234,18 +234,14 @@ when processing the template.
 =head2 recaptcha_verify
 
 Call this helper when receiving the request from your website after the user
-submitted the form.
+submitted the form. Sends your secret, the response token from the request
+your received and the users IP to the reCAPTCHA server to verify the token.
 
 You should call this only once per incoming request.
 
 It will return one of the following values:
 
 =over 4
-
-=item C<-1>
-
-Some internal error occured: the HTTP request failed or the result returned
-by the reCPATCHA servers is invalid JSON.
 
 =item C<0>
 
@@ -257,8 +253,8 @@ re-display the form with an added error message.
 
 =item C<1>
 
-The reCAPTCHA service believes that the challenge was solved by a human.
-You may proceed with processing the incoming request.
+The data is valid and the reCAPTCHA service believes that the challenge
+was solved by a human. You may proceed with processing the incoming request.
 
 =back
 
@@ -267,7 +263,7 @@ You may proceed with processing the incoming request.
 This helper returns a reference to an array which may contain zero, one
 or more error codes.
 The array is reset on every call to C<recaptcha_verify>.
-The array can contain these error codes:
+The array can contain these official API error codes:
 
 =over 4
 
@@ -298,6 +294,23 @@ transferred to your server after the user submitted your form.
 The response parameter is invalid or malformed.
 
 Somebody tinkered with the request data somewhere.
+
+=back
+
+Additionally the following error codes may be encountered which are defined
+internally by this module. Note: these codes start with "x-" to 
+distinguish them from official error codes.
+
+=over 4
+
+=item C<x-http-communication-failed>
+
+Something went wrong while trying to talk to the reCAPTCHA server.
+
+=item C<x-unparseable-data-received>
+
+The http request was completed successfully but Mojo::JSON could not
+decode the response received from the reCAPTCHA server.
 
 =back
 
