@@ -225,7 +225,7 @@ L<Mojolicious::Plugin::ReCAPTCHAv2> makes the following helpers available:
 
 =head2 recaptcha_get_html
 
-Returns a HTML fragment with the widget codeM; you will probably want to put
+Returns a HTML fragment with the widget code; you will probably want to put
 this in the stash, since it has to be inserted in your HTML form element
 when processing the template.
 
@@ -237,11 +237,11 @@ your received and the users IP to the reCAPTCHA server to verify the token.
 
 You should call this only once per incoming request.
 
-It will return one of the following values:
+It will return either a C<true> or C<false> value:
 
 =over 4
 
-=item C<0>
+=item C<false> (0)
 
 The reCAPTCHA service could not verify that the Captcha was solved by a
 human; either because it was a bot or because of some processing error.
@@ -249,7 +249,7 @@ You should check for processing errors via C<recaptcha_get_errors>.
 You should not continue with processing your users request but probably
 re-display the form with an added error message.
 
-=item C<1>
+=item C<true> (1)
 
 The data is valid and the reCAPTCHA service believes that the challenge
 was solved by a human. You may proceed with processing the incoming request.
