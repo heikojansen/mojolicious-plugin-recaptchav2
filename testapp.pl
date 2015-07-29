@@ -11,29 +11,26 @@ use Mojolicious::Lite;
 app->log->level('error');
 
 plugin 'ReCAPTCHAv2' => {
-        sitekey  => $ENV{'RECAPTCHA_SITEKEY'},
-        secret   => $ENV{'RECAPTCHA_SECRET'},
+	sitekey  => $ENV{'RECAPTCHA_SITEKEY'},
+	secret   => $ENV{'RECAPTCHA_SECRET'},
 	language => 'de',
 };
  
 get '/test' => sub {
-        my $self = shift;
+	my $self = shift;
 	$self->stash( nocap => $self->recaptcha_get_html );
 };
 
 post '/run' => sub {
 	my $self = shift;
 	my $result = $self->recaptcha_verify;
-	if ( $result > 0 ) {
+	if ($result) {
 		warn "success";
 	}
-	elsif ( $result == 0 ) {
+	else {
 		warn "failed";
 		use Data::Dumper;
 		warn Dumper $self->recaptcha_get_errors;
-	}
-	else {
-		warn "Internal error";
 	}
 	$self->stash( result => $result );
 };
