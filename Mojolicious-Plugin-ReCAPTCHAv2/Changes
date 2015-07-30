@@ -4,7 +4,8 @@
         either "0" or "1"; former return value "-1" is 
         now subsumed under "0" and can be distinguished by
         analyzing the error codes
-      - Added test provided by pgraemer
+      - Added tests (pgraemer)
+      - POD fix and some code reformatting (pgraemer)
       - Fix error handling for failed verification requests
 
 0.03      2015-07-03 16:55:43+02:00 Europe/Berlin
