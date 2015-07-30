@@ -1,5 +1,7 @@
 
 {{$NEXT}}
+
+0.04      2015-07-30 22:27:10+02:00 Europe/Berlin
       - API CHANGE! recaptcha_verify() now only returns 
         either "0" or "1"; former return value "-1" is 
         now subsumed under "0" and can be distinguished by
