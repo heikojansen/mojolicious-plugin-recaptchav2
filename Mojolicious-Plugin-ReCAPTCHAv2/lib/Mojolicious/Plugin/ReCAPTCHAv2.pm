@@ -91,10 +91,14 @@ sub register {
 
 			}
 			else {
-				$c->app->log->error( 'Retrieving captcha verifcation failed: HTTP ' . $res->code );
+				my $err = $tx->error;
+				my $txt = 'Retrieving captcha verifcation failed';
+				$txt   .= ' (HTTP ' . $err->{'code'} . ')' if $err->{'code'};
+
+				$c->app->log->error( $txt . ': ' . $err->{'message'} );
 				$c->app->log->error( 'Request  was: ' . $tx->req->to_string );
-				$c->app->log->error( 'Response was: ' . $tx->res->to_string );
 				$plugin->verification_errors( ["x-http-communication-failed"] );
+
 				return 0;
 			}
 		}
