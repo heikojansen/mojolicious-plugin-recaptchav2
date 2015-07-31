@@ -1,7 +1,7 @@
 
 {{$NEXT}}
-      - Fix compatibility with Mojolicious versions older
-	    than 5.0 and 4.82 respectively
+      - Fix compatibility with older Mojolicious versions
+        (probably back to 3.02 or even older)
 
 0.04      2015-07-30 22:27:10+02:00 Europe/Berlin
       - API CHANGE! recaptcha_verify() now only returns 
