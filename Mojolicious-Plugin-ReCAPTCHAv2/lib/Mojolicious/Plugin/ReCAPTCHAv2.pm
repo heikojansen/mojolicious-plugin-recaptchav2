@@ -85,7 +85,16 @@ sub register {
 			$plugin->verification_errors([]);
 
 			# XXX async request?
-			my $tx = $ua->post( $url => form => \%verify_params );
+
+			my $tx = '';
+			# Backwards compatibility with older Mojolicious versions
+			if ( $ua->can('post_form') ) {
+				$tx = $ua->post_form( $url => \%verify_params );
+			}
+			else {
+				$tx = $ua->post( $url => form => \%verify_params );
+			}
+
 			if ( my $res = $tx->success ) {
 				my $json = '';
 				eval {
@@ -96,7 +105,7 @@ sub register {
 				if ( defined($@) and index( $@, 'Mojo::JSON::decode_json' ) >= 0 ) {
 					eval {
 						my $obj = Mojo::JSON->new;
-						$json = $obj->decode_json( $res->body );
+						$json = $obj->decode( $res->body );
 					};
 				}
 
