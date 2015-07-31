@@ -42,12 +42,26 @@ sub register {
 				$hl = delete $data_attr{'language'};
 			}
 
-			my $output = $c->render_to_string(
-				inline => q|<script src="https://www.google.com/recaptcha/api.js?hl=<%= $hl %>" async defer></script>
-<div class="g-recaptcha"<% foreach my $k ( sort keys %{$attr} ) { %> data-<%= $k %>="<%= $attr->{$k} %>"<% } %>></div>|,
-				hl     => $hl,
-				attr   => \%data_attr,
-			);
+			my $output = '';
+			my $template = q|<script src="https://www.google.com/recaptcha/api.js?hl=<%= $hl %>" async defer></script>
+<div class="g-recaptcha"<% foreach my $k ( sort keys %{$attr} ) { %> data-<%= $k %>="<%= $attr->{$k} %>"<% } %>></div>|;
+
+			# Compatibility with Mojolicious < 5.0
+			if ( $c->can('render_to_string') ) {
+				$output = $c->render_to_string(
+					inline => $template,
+					hl     => $hl,
+					attr   => \%data_attr,
+				);
+			}
+			else {
+				$output = $c->render(
+					inline  => $template,
+					hl      => $hl,
+					attr    => \%data_attr,
+					partial => 1,
+				);
+			}
 			return $output;
 		}
 	);
@@ -57,7 +71,7 @@ sub register {
 
 			my %verify_params = (
 				remoteip => $c->tx->remote_address,
-				response => $c->req->param('g-recaptcha-response'),
+				response => ( $c->req->param('g-recaptcha-response') || '' ),
 				secret   => $plugin->conf->{'secret'},
 			);
 
@@ -77,6 +91,15 @@ sub register {
 				eval {
 					$json = Mojo::JSON::decode_json( $res->body );
 				};
+
+				# Compatibility with Mojo::JSON as of Mojolicious < 4.82
+				if ( index( $@, 'Mojo::JSON::decode_json' ) >= 0 ) {
+					eval {
+						my $obj = Mojo::JSON->new;
+						$json = $obj->decode_json( $res->body );
+					};
+				}
+
 				if ($@) {
 					$c->app->log->error( 'Decoding JSON response failed: ' . $@ );
 					$c->app->log->error( 'Request  was: ' . $tx->req->to_string );
