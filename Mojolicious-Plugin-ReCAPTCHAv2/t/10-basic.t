@@ -16,7 +16,7 @@ get '/' => sub {
 	$c->render( text => $c->recaptcha_get_html );
 };
 
-get '/test' => sub {
+post '/test' => sub {
 	my $c = shift;
 	$c->render(
 		json => {
@@ -36,11 +36,21 @@ $t
 <div class="g-recaptcha" data-sitekey="key"></div>
 RECAPTCHA
 
-$t
-->get_ok( '/test' => {} => form => { 'g-recaptcha-response' => 'foo' } )
-->status_is(200)
-->json_is( '/verify'   => 0 )
-->json_is( '/errors/0' => 'invalid-input-response' )
-->json_is( '/errors/1' => 'invalid-input-secret' );
+if ( $t->can('post_form_ok') ) {
+        $t
+        ->post_form_ok( '/test' => { 'g-recaptcha-response' => 'foo' } )
+        ->status_is(200)
+        ->json_is( '/verify'   => 0 )
+        ->json_is( '/errors/0' => 'invalid-input-response' )
+        ->json_is( '/errors/1' => 'invalid-input-secret' );
+}
+else {
+        $t
+        ->post_ok( '/test' => {} => form => { 'g-recaptcha-response' => 'foo' } )
+        ->status_is(200)
+        ->json_is( '/verify'   => 0 )
+        ->json_is( '/errors/0' => 'invalid-input-response' )
+        ->json_is( '/errors/1' => 'invalid-input-secret' );
+}
 
 done_testing;
