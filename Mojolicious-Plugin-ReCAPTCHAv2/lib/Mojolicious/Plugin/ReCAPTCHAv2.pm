@@ -93,7 +93,7 @@ sub register {
 				};
 
 				# Compatibility with Mojo::JSON as of Mojolicious < 4.82
-				if ( index( $@, 'Mojo::JSON::decode_json' ) >= 0 ) {
+				if ( defined($@) and index( $@, 'Mojo::JSON::decode_json' ) >= 0 ) {
 					eval {
 						my $obj = Mojo::JSON->new;
 						$json = $obj->decode_json( $res->body );
