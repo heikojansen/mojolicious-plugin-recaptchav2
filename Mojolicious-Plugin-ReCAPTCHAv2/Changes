@@ -1,6 +1,9 @@
 
 {{$NEXT}}
 
+0.2       2015-09-30 13:17:55+02:00 Europe/Berlin
+      - Fix compatibility with Mojolicious 6.22
+
 0.1       2015-08-04 11:44:44+02:00 Europe/Berlin
       - Fix compatibility with older Mojolicious versions
         (hopefully back to 3.02 or even older)

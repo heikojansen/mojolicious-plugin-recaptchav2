@@ -5,7 +5,7 @@ use Mojo::Base 'Mojolicious::Plugin';
 
 # ABSTRACT: use Googles "No CAPTCHA reCAPCTHA" (reCAPTCHA v2) service in Mojolicious apps
 
-use Mojo::JSON qw();
+use Mojo::JSON qw( true false );
 use Mojo::UserAgent qw();
 
 has conf => sub{ +{} };
@@ -116,7 +116,7 @@ sub register {
 					$plugin->verification_errors( ["x-unparseable-data-received"] );
 					return 0;
 				}
-				unless ( $json->{'success'} ) {
+				unless ( $json->{'success'} == true ) {
 					$plugin->verification_errors( $json->{'error-codes'} // [] );
 				}
 				return $json->{'success'};
