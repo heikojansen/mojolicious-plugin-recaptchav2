@@ -3,7 +3,7 @@
 
 use Mojo::Base -strict;
 use Mojolicious::Lite;
-use Mojo::JSON qw( true false );
+use Mojo::JSON qw();
 use Test::Mojo;
 use Test::More;
 
@@ -53,12 +53,27 @@ if ( $t->can('post_form_ok') ) {
         ->json_is( '/errors/1' => 'invalid-input-secret' );
 }
 else {
+	my $oo = 0;
+	eval {
+		my $obj = Mojo::JSON->new;
+		$oo = $obj->can('false');
+	};
+	if ($oo) {
         $t
         ->post_ok( '/test' => {} => form => { 'g-recaptcha-response' => 'foo' } )
         ->status_is(200)
-        ->json_is( '/verify'   => false )
+        ->json_is( '/verify'   => Mojo::JSON->false )
         ->json_is( '/errors/0' => 'invalid-input-response' )
         ->json_is( '/errors/1' => 'invalid-input-secret' );
+	}
+	else {
+        $t
+        ->post_ok( '/test' => {} => form => { 'g-recaptcha-response' => 'foo' } )
+        ->status_is(200)
+        ->json_is( '/verify'   => Mojo::JSON::false )
+        ->json_is( '/errors/0' => 'invalid-input-response' )
+        ->json_is( '/errors/1' => 'invalid-input-secret' );
+	}
 }
 
 done_testing;

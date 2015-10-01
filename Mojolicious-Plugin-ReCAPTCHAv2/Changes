@@ -1,6 +1,9 @@
 
 {{$NEXT}}
 
+0.3       2015-10-01 11:52:49+02:00 Europe/Berlin
+      - Fix compatibility with older versions of Mojo::JSON API
+
 0.2       2015-09-30 13:17:55+02:00 Europe/Berlin
       - Fix compatibility with Mojolicious 6.22
 
