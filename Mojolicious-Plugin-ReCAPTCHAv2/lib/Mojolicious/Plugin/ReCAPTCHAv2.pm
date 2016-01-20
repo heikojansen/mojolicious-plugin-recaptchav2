@@ -49,6 +49,7 @@ sub register {
 			# Compatibility with Mojolicious < 5.0
 			if ( $c->can('render_to_string') ) {
 				$output = $c->render_to_string(
+					handler => 'ep',
 					inline => $template,
 					hl     => $hl,
 					attr   => \%data_attr,
@@ -56,6 +57,7 @@ sub register {
 			}
 			else {
 				$output = $c->render(
+					handler => 'ep',
 					inline  => $template,
 					hl      => $hl,
 					attr    => \%data_attr,

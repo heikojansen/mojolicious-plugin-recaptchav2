@@ -1,5 +1,5 @@
 /blib/
-/.build/
+.build/
 _build/
 cover_db/
 inc/
@@ -10,6 +10,7 @@ Build.bat
 /Makefile
 /Makefile.old
 /MANIFEST.bak
+Mojolicious-Plugin-ReCAPTCHAv2-*
 /META.yml
 /META.json
 /MYMETA.*
@@ -19,3 +20,4 @@ nytprof.out
 *.bs
 /_eumm/
 *.swp
+*.tar.gz
