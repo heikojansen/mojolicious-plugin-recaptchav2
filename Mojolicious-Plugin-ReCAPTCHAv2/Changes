@@ -1,6 +1,12 @@
 
 {{$NEXT}}
 
+0.4       2016-01-20 23:22:22+01:00 Europe/Berlin
+	  - Make sure the internal template is always processed with 
+	    EPRenderer and not by whatever template engine the
+	    current app defaults to.
+	    Issue reported and patch provided by LEEJO.
+
 0.3       2015-10-01 11:52:49+02:00 Europe/Berlin
       - Fix compatibility with older versions of Mojo::JSON API
 
