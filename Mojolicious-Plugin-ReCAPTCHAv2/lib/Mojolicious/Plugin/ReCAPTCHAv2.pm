@@ -11,6 +11,8 @@ use Mojo::UserAgent qw();
 has conf => sub{ +{} };
 has verification_errors => sub{ +[] };
 
+my $async_ua = Mojo::UserAgent->new->max_redirects(0);
+
 sub register {
 	my $plugin = shift;
 	my $app    = shift;
@@ -86,8 +88,6 @@ sub register {
 			# reset previous errors, if any
 			$plugin->verification_errors([]);
 
-			# XXX async request?
-
 			my $tx = '';
 			# Backwards compatibility with older Mojolicious versions
 			if ( $ua->can('post_form') ) {
@@ -136,6 +136,56 @@ sub register {
 
 				return 0;
 			}
+		}
+	);
+	$app->helper(
+		recaptcha_verify_p => sub {
+			my $c = shift;
+
+			my %verify_params = (
+				remoteip => $c->tx->remote_address,
+				response => ( $c->req->param('g-recaptcha-response') || '' ),
+				secret   => $plugin->conf->{'secret'},
+			);
+
+			my $url     = $plugin->conf->{'api_url'};
+			my $timeout = $plugin->conf->{'api_timeout'};
+
+			my $ua = $async_ua->request_timeout($timeout);
+
+			# Async request using promises
+			require Mojo::Promise;
+			my $p = Mojo::Promise->new();
+			$ua->post( $url => form => \%verify_params,
+				sub {
+					my ($ua, $tx) = @_;
+					unless ($tx->error) {
+						my $res = $tx->res;
+						my $json = eval { $res->json };
+						if (not defined $json) {
+							$c->app->log->error( 'Decoding JSON response failed: ' . $@ );
+							$c->app->log->error( 'Request  was: ' . $tx->req->to_string );
+							$c->app->log->error( 'Response was: ' . $tx->res->to_string );
+							return $p->reject( 'x-unparseable-data-received' );
+						}
+						unless ($json->{'success'}) {
+							return $p->reject( @{ $json->{'error-codes'} // [] } );
+						}
+
+						return $p->resolve( $json->{'success'} );
+					}
+
+					my $err = $tx->error;
+					my $txt = 'Retrieving captcha verification failed';
+					$txt   .= ' (HTTP ' . $err->{'code'} . ')' if $err->{'code'};
+
+					$c->app->log->error( $txt . ': ' . $err->{'message'} );
+					$c->app->log->error( 'Request  was: ' . $tx->req->to_string );
+					return $p->reject( 'x-http-communication-failed' );
+				}
+			);
+
+			return $p;
 		}
 	);
 	$app->helper(
@@ -300,7 +350,49 @@ was solved by a human. You may proceed with processing the incoming request.
 This helper returns a reference to an array which may contain zero, one
 or more error codes.
 The array is reset on every call to C<recaptcha_verify>.
-The array can contain these official API error codes:
+The array can contain the errors listed below under L</ERRORS>.
+
+=head1 ASYNC
+
+You can also verify the reCAPTCHA non-blocking by using recaptcha_verify_p.
+This will only work on a Mojolicious version that includes L<Mojo::Promise>
+promises.
+
+=head2 recaptcha_verify_p
+
+    # on incoming request
+    sub form_handler {
+        my $c = shift;
+
+        $c->recaptcha_verify_p->then(
+            sub { # success, probably human
+                ...
+                $c->render('success');
+            }
+        )->catch(
+            sub { # fail ...
+                my @errors = @_;
+                if (@errors) { # there was a processing error ...
+                    $c->reply->exception(join "\n", @errors);
+                }
+                else { # it's probably a bot ...
+                    $c->render(text => 'no bots allowed', status => 403);
+                }
+            }
+        )->wait;
+    }
+
+This helper returns a L<Mojo::Promise> that will C<resolve> if the reCAPTCHA
+service believes that the challenge was solved by a human, and it will
+C<reject> if there was a failure. The failure can be caused either by an error
+or because the service believes the challenge was attempted by a bot.
+
+In case of errors, those will be passed through the rejection. See L</ERRORS>
+below for more details.
+
+=head1 ERRORS
+
+The following official API error codes can be returned by reCAPTCHA:
 
 =over 4
 
