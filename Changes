@@ -1,5 +1,10 @@
 
 {{$NEXT}}
+	- Fixed warning when checking for Mojo::JSON oo interface
+	  (GH#3, GH#4) - gmorten1
+	- Added async recaptcha_verify_p using Mojo::Promise
+	  (GH#5) - pink-mist
+	- Reorganised git repo structure
 
 0.4       2016-01-20 23:22:22+01:00 Europe/Berlin
 	  - Make sure the internal template is always processed with 
