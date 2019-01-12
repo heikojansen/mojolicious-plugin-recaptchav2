@@ -1,3 +1,5 @@
 \.SKIP$
+cpanfile
+cpanfile.snapshot
 dist.ini
 ~$

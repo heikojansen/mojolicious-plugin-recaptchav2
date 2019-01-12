@@ -1,4 +1,5 @@
 package Mojolicious::Plugin::ReCAPTCHAv2;
+
 # vim:syntax=perl:tabstop=4:number:noexpandtab:
 
 use Mojo::Base 'Mojolicious::Plugin';
@@ -8,193 +9,170 @@ use Mojo::Base 'Mojolicious::Plugin';
 use Mojo::JSON qw();
 use Mojo::UserAgent qw();
 
-has conf => sub{ +{} };
-has verification_errors => sub{ +[] };
+has conf => sub { +{} };
+has ua   => sub { Mojo::UserAgent->new()->max_redirects( 0 ) };
 
-my $async_ua = Mojo::UserAgent->new->max_redirects(0);
 
 sub register {
-	my $plugin = shift;
-	my $app    = shift;
-	my $conf   = shift || {};
+    my $plugin = shift;
+    my $app    = shift;
+    my $conf   = shift || {};
 
-	die ref($plugin), ": need sitekey and secret!\n"
-		unless $conf->{'sitekey'} and $conf->{'secret'};
+    die ref( $plugin ), ": need sitekey and secret!\n"
+      unless $conf->{'sitekey'} and $conf->{'secret'};
 
-	$conf->{'api_url'}     //= 'https://www.google.com/recaptcha/api/siteverify';
-	$conf->{'api_timeout'} //= 10;
+    $conf->{'api_url'}     //= 'https://www.google.com/recaptcha/api/siteverify';
+    $conf->{'api_timeout'} //= 10;
 
-	$plugin->conf($conf);
+    $plugin->conf( $conf );
+    $plugin->ua->request_timeout( $conf->{'api_timeout'} );
 
-	$app->helper(
-		recaptcha_get_html => sub {
-			my $c         = shift;
-			my $language  = $_[0] ? shift : undef;
+    $app->helper(
+        recaptcha_get_html => sub {
+            my $c        = shift;
+            my $language = $_[0] ? shift : undef;
 
-			my %data_attr = map { $_ => $plugin->conf->{$_} } grep { index( $_, 'api_' ) != 0 } keys %{ $plugin->conf };
+            my %data_attr = map { $_ => $plugin->conf->{$_} } grep { index( $_, 'api_' ) != 0 } keys %{ $plugin->conf };
 
-			# Never expose this!
-			delete $data_attr{'secret'};
+            # Never expose this!
+            delete $data_attr{'secret'};
 
-			my $hl = '';
-			if ( defined $language and $language ) {
-				$hl = $language;
-			}
-			elsif ( exists $data_attr{'language'} ) {
-				$hl = delete $data_attr{'language'};
-			}
+            my $hl = '';
+            if ( defined $language and $language ) {
+                $hl = $language;
+            }
+            elsif ( exists $data_attr{'language'} ) {
+                $hl = delete $data_attr{'language'};
+            }
 
-			my $output = '';
-			my $template = q|<script src="https://www.google.com/recaptcha/api.js?hl=<%= $hl %>" async defer></script>
+            my $output   = '';
+            my $template = q|<script src="https://www.google.com/recaptcha/api.js?hl=<%= $hl %>" async defer></script>
 <div class="g-recaptcha"<% foreach my $k ( sort keys %{$attr} ) { %> data-<%= $k %>="<%= $attr->{$k} %>"<% } %>></div>|;
 
-			# Compatibility with Mojolicious < 5.0
-			if ( $c->can('render_to_string') ) {
-				$output = $c->render_to_string(
-					handler => 'ep',
-					inline => $template,
-					hl     => $hl,
-					attr   => \%data_attr,
-				);
-			}
-			else {
-				$output = $c->render(
-					handler => 'ep',
-					inline  => $template,
-					hl      => $hl,
-					attr    => \%data_attr,
-					partial => 1,
-				);
-			}
-			return $output;
-		}
-	);
-	$app->helper(
-		recaptcha_verify => sub {
-			my $c = shift;
+            return $c->render_to_string(
+                handler => 'ep',
+                inline  => $template,
+                hl      => $hl,
+                attr    => \%data_attr,
+            );
+        }
+    );
 
-			my %verify_params = (
-				remoteip => $c->tx->remote_address,
-				response => ( $c->req->param('g-recaptcha-response') || '' ),
-				secret   => $plugin->conf->{'secret'},
-			);
+    $app->helper(
+        recaptcha_verify => sub {
+            my $c = shift;
 
-			my $url     = $plugin->conf->{'api_url'};
-			my $timeout = $plugin->conf->{'api_timeout'};
+            my $cb = shift;
+            unless ( defined( $cb ) and ref( $cb ) eq 'CODE' ) {
+                $cb = '';
+            }
 
-			my $ua = Mojo::UserAgent->new();
-			$ua->max_redirects(0)->request_timeout($timeout);
+            my %verify_params = (
+                remoteip => $c->tx->remote_address,
+                response => ( $c->req->param( 'g-recaptcha-response' ) || '' ),
+                secret   => $plugin->conf->{'secret'},
+            );
 
-			# reset previous errors, if any
-			$plugin->verification_errors([]);
+            my $url = $plugin->conf->{'api_url'};
 
-			my $tx = '';
-			# Backwards compatibility with older Mojolicious versions
-			if ( $ua->can('post_form') ) {
-				$tx = $ua->post_form( $url => \%verify_params );
-			}
-			else {
-				$tx = $ua->post( $url => form => \%verify_params );
-			}
+            my $response_handler = sub {
+                my ( $ua, $tx ) = @_;
 
-			if ( my $res = $tx->success ) {
-				my $json = '';
-				eval {
-					$json = Mojo::JSON::decode_json( $res->body );
-				};
+                my ( $verified, $err ) = ( 0, [] );
+                if ( my $txerr = $tx->error ) {
+                    my $txt = 'Retrieving captcha verifcation failed';
+                    $txt .= ' (HTTP ' . $txerr->{'code'} . ')' if $txerr->{'code'};
 
-				# Compatibility with Mojo::JSON as of Mojolicious < 4.82
-				if ( defined($@) and index( $@, 'Mojo::JSON::decode_json' ) >= 0 ) {
-					eval {
-						my $obj = Mojo::JSON->new;
-						$json = $obj->decode( $res->body );
-					};
-				}
+                    $c->app->log->error( $txt . ': ' . $txerr->{'message'} );
+                    $c->app->log->error( 'Request  was: ' . $tx->req->to_string );
 
-				if ($@) {
-					$c->app->log->error( 'Decoding JSON response failed: ' . $@ );
-					$c->app->log->error( 'Request  was: ' . $tx->req->to_string );
-					$c->app->log->error( 'Response was: ' . $tx->res->to_string );
-					$plugin->verification_errors( ["x-unparseable-data-received"] );
-					return 0;
-				}
+                    ( $verified, $err ) = ( 0, ['x-http-communication-failed'] );
+                }
+                else {
+                    my $json = '';
+                    eval { $json = Mojo::JSON::decode_json( $tx->res->body ); };
 
-				unless ( $json->{'success'} == Mojo::JSON->true  ) {
-					$plugin->verification_errors( $json->{'error-codes'} // [] );
-				}
-				return $json->{'success'};
+                    if ( $@ ) {
+                        $c->app->log->error( 'Decoding JSON response failed: ' . $@ );
+                        $c->app->log->error( 'Request  was: ' . $tx->req->to_string );
+                        $c->app->log->error( 'Response was: ' . $tx->res->to_string );
 
-			}
-			else {
-				my $err = $tx->error;
-				my $txt = 'Retrieving captcha verifcation failed';
-				$txt   .= ' (HTTP ' . $err->{'code'} . ')' if $err->{'code'};
+                        ( $verified, $err ) = ( 0, ['x-unparseable-data-received'] );
+                    }
+                    else {
+                        unless ( $json->{'success'} == Mojo::JSON->true ) {
+                            @{$err} = @{ $json->{'error-codes'} // [] };
+                        }
+                        $verified = $json->{'success'};
+                    }
+                }
 
-				$c->app->log->error( $txt . ': ' . $err->{'message'} );
-				$c->app->log->error( 'Request  was: ' . $tx->req->to_string );
-				$plugin->verification_errors( ["x-http-communication-failed"] );
+                return $cb->( $verified, $err ) if $cb;
+                return ( $verified, $err );
+            };
 
-				return 0;
-			}
-		}
-	);
-	$app->helper(
-		recaptcha_verify_p => sub {
-			my $c = shift;
+            if ( $cb ) {
+                return $plugin->ua->post( $url, form => \%verify_params, $response_handler );
+            }
+            else {
+                my $tx = $plugin->ua->post( $url, form => \%verify_params );
+                return $response_handler->( $plugin->ua, $tx );
+            }
+        }
+    );
 
-			my %verify_params = (
-				remoteip => $c->tx->remote_address,
-				response => ( $c->req->param('g-recaptcha-response') || '' ),
-				secret   => $plugin->conf->{'secret'},
-			);
+    $app->helper(
+        recaptcha_verify_p => sub {
+            my $c = shift;
 
-			my $url     = $plugin->conf->{'api_url'};
-			my $timeout = $plugin->conf->{'api_timeout'};
+            my %verify_params = (
+                remoteip => $c->tx->remote_address,
+                response => ( $c->req->param( 'g-recaptcha-response' ) || '' ),
+                secret   => $plugin->conf->{'secret'},
+            );
 
-			my $ua = $async_ua->request_timeout($timeout);
+            my $url = $plugin->conf->{'api_url'};
 
-			# Async request using promises
-			require Mojo::Promise;
-			my $p = Mojo::Promise->new();
-			$ua->post( $url => form => \%verify_params,
-				sub {
-					my ($ua, $tx) = @_;
-					unless ($tx->error) {
-						my $res = $tx->res;
-						my $json = eval { $res->json };
-						if (not defined $json) {
-							$c->app->log->error( 'Decoding JSON response failed: ' . $@ );
-							$c->app->log->error( 'Request  was: ' . $tx->req->to_string );
-							$c->app->log->error( 'Response was: ' . $tx->res->to_string );
-							return $p->reject( 'x-unparseable-data-received' );
-						}
-						unless ($json->{'success'}) {
-							return $p->reject( @{ $json->{'error-codes'} // [] } );
-						}
+            # Async request using promises
+            require Mojo::Promise;
+            my $p = Mojo::Promise->new();
+            $plugin->ua->post(
+                $url => form => \%verify_params,
+                sub {
+                    my ( $ua, $tx ) = @_;
 
-						return $p->resolve( $json->{'success'} );
-					}
+                    if ( my $err = $tx->error ) {
+                        my $txt = 'Retrieving captcha verification failed';
+                        $txt .= ' (HTTP ' . $err->{'code'} . ')' if $err->{'code'};
 
-					my $err = $tx->error;
-					my $txt = 'Retrieving captcha verification failed';
-					$txt   .= ' (HTTP ' . $err->{'code'} . ')' if $err->{'code'};
+                        $c->app->log->error( $txt . ': ' . $err->{'message'} );
+                        $c->app->log->error( 'Request  was: ' . $tx->req->to_string );
+                        return $p->reject( ['x-http-communication-failed'] );
+                    }
 
-					$c->app->log->error( $txt . ': ' . $err->{'message'} );
-					$c->app->log->error( 'Request  was: ' . $tx->req->to_string );
-					return $p->reject( 'x-http-communication-failed' );
-				}
-			);
+                    my $res  = $tx->res;
+                    my $json = eval { $res->json };
 
-			return $p;
-		}
-	);
-	$app->helper(
-		recaptcha_get_errors => sub {
-			return $plugin->verification_errors;
-		}
-	);
+                    if ( not defined $json ) {
+                        $c->app->log->error( 'Decoding JSON response failed: ' . $@ );
+                        $c->app->log->error( 'Request  was: ' . $tx->req->to_string );
+                        $c->app->log->error( 'Response was: ' . $tx->res->to_string );
+                        return $p->reject( ['x-unparseable-data-received'] );
+                    }
 
-	return;
+                    unless ( $json->{'success'} ) {
+                        return $p->reject( $json->{'error-codes'} // [] );
+                    }
+
+                    return $p->resolve( $json->{'success'} );
+                }
+            );
+
+            return $p;
+        }
+    );
+
+    return;
 } ## end sub register
 
 1;
@@ -208,9 +186,9 @@ __END__
     use Mojolicious::Plugin::ReCAPTCHAv2;
 
     sub startup {
-        my $self = shift;
+        my $app = shift;
 
-        $self->plugin('ReCAPTCHAv2', {
+        $app->plugin('ReCAPTCHAv2', {
             sitekey       => 'site-key-embedded-in-public-html',                 # required
             secret        => 'key-used-in-internal-verification-requests',       # required
             # api_timeout => 10,                                                 # optional
@@ -225,29 +203,68 @@ __END__
     # later
 
     # assembling website:
-    $app->stash( captcha => $app->recaptcha_get_html );
+    $c->stash( captcha => $app->recaptcha_get_html );
+
     # now use stashed value in your HTML template, i.e.: <form..>...<% $captcha %>...</form>
 
     # on incoming request
-    if ( $app->recaptcha_verify ) {
+
+    # synchronous
+    my ( $captcha_verified, $err ) = $c->recaptcha_verify;
+    if ( $captcha_verified ) {
+
         # success: probably human
         ...
     }
     else {
-        # fail: probably bot, but may also be a
-        # processing error
 
-        if ( my $err = $app->recaptcha_get_errors ) {
+        # fail: probably bot, but may also be a processing error
+        if ( @{$err} ) {
+
             # processing failed, inspect error codes
             foreach my $e ( @{$err} ) {
                 ...
             }
         }
         else {
+
             # bot
             ...
         }
     }
+
+    # asynchronous
+    Mojo::IOLoop->delay(
+        sub {
+            my $delay = shift;
+            $c->recaptcha_verify( $delay->begin(0) );
+        },
+        sub {
+            my ( $delay, $captcha_verified, $err ) = @_;
+            if ( $captcha_verified ) {
+
+                # success: probably human
+                ...
+            }
+            else {
+
+                # fail: probably bot, but may also be a processing error
+                if ( @{$err} ) {
+
+                    # processing failed, inspect error codes
+                    foreach my $e ( @{$err} ) {
+                        ...
+                    }
+                }
+                else {
+
+                    # bot
+                    ...
+                }
+            }
+        }
+    )->wait;
+
 
 =head1 DESCRIPTION
 
@@ -318,7 +335,7 @@ Returns a HTML fragment with the widget code; you will probably want to put
 this in the stash, since it has to be inserted in your HTML form element
 when processing the template.
 
-=head2 recaptcha_verify
+=head2 recaptcha_verify( [ $callback ] )
 
 Call this helper when receiving the request from your website after the user
 submitted the form. Sends your secret, the response token from the request
@@ -326,7 +343,10 @@ your received and the users IP to the reCAPTCHA server to verify the token.
 
 You should call this only once per incoming request.
 
-It will return either a C<true> or C<false> value:
+It will return two values: a success indicator and a (usually empty)
+array reference with error codes.
+
+The status indicator will be either a C<true> or C<false> value:
 
 =over 4
 
@@ -334,9 +354,13 @@ It will return either a C<true> or C<false> value:
 
 The reCAPTCHA service could not verify that the Captcha was solved by a
 human; either because it was a bot or because of some processing error.
-You should check for processing errors via C<recaptcha_get_errors>.
-You should not continue with processing your users request but probably
-re-display the form with an added error message.
+
+You should check the second return value for processing errors.
+If there are none, the captcha was not solved correctly, probably indicating
+a bot.
+
+In either case you should not continue processing the request but probably
+re-display the form with an approriate error message.
 
 =item C<true> (1)
 
@@ -345,18 +369,14 @@ was solved by a human. You may proceed with processing the incoming request.
 
 =back
 
-=head2 recaptcha_get_errors
+The second return value may contain zero, one or more error codes.
+Possible values are listed below under L</ERRORS>.
 
-This helper returns a reference to an array which may contain zero, one
-or more error codes.
-The array is reset on every call to C<recaptcha_verify>.
-The array can contain the errors listed below under L</ERRORS>.
-
-=head1 ASYNC
+=head1 ASYNC WITH PROMISES
 
 You can also verify the reCAPTCHA non-blocking by using recaptcha_verify_p.
 This will only work on a Mojolicious version that includes L<Mojo::Promise>
-promises.
+promises, so v7.53 and newer.
 
 =head2 recaptcha_verify_p
 
@@ -371,7 +391,7 @@ promises.
             }
         )->catch(
             sub { # fail ...
-                my @errors = @_;
+                my @errors = @{ @_[0] };
                 if (@errors) { # there was a processing error ...
                     $c->reply->exception(join "\n", @errors);
                 }

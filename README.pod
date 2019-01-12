@@ -5,9 +5,9 @@
     use Mojolicious::Plugin::ReCAPTCHAv2;
 
     sub startup {
-        my $self = shift;
+        my $app = shift;
 
-        $self->plugin('ReCAPTCHAv2', {
+        $app->plugin('ReCAPTCHAv2', {
             sitekey       => 'site-key-embedded-in-public-html',                 # required
             secret        => 'key-used-in-internal-verification-requests',       # required
             # api_timeout => 10,                                                 # optional
@@ -22,29 +22,68 @@
     # later
 
     # assembling website:
-    $app->stash( captcha => $app->recaptcha_get_html );
+    $c->stash( captcha => $app->recaptcha_get_html );
+
     # now use stashed value in your HTML template, i.e.: <form..>...<% $captcha %>...</form>
 
     # on incoming request
-    if ( $app->recaptcha_verify ) {
+
+    # synchronous
+    my ( $captcha_verified, $err ) = $c->recaptcha_verify;
+    if ( $captcha_verified ) {
+
         # success: probably human
         ...
     }
     else {
-        # fail: probably bot, but may also be a
-        # processing error
 
-        if ( my $err = $app->recaptcha_get_errors ) {
+        # fail: probably bot, but may also be a processing error
+        if ( @{$err} ) {
+
             # processing failed, inspect error codes
             foreach my $e ( @{$err} ) {
                 ...
             }
         }
         else {
+
             # bot
             ...
         }
     }
+
+    # asynchronous
+    Mojo::IOLoop->delay(
+        sub {
+            my $delay = shift;
+            $c->recaptcha_verify( $delay->begin(0) );
+        },
+        sub {
+            my ( $delay, $captcha_verified, $err ) = @_;
+            if ( $captcha_verified ) {
+
+                # success: probably human
+                ...
+            }
+            else {
+
+                # fail: probably bot, but may also be a processing error
+                if ( @{$err} ) {
+
+                    # processing failed, inspect error codes
+                    foreach my $e ( @{$err} ) {
+                        ...
+                    }
+                }
+                else {
+
+                    # bot
+                    ...
+                }
+            }
+        }
+    )->wait;
+
 
 =head1 DESCRIPTION
 
@@ -115,7 +154,7 @@ Returns a HTML fragment with the widget code; you will probably want to put
 this in the stash, since it has to be inserted in your HTML form element
 when processing the template.
 
-=head2 recaptcha_verify
+=head2 recaptcha_verify( [ $callback ] )
 
 Call this helper when receiving the request from your website after the user
 submitted the form. Sends your secret, the response token from the request
@@ -123,7 +162,10 @@ your received and the users IP to the reCAPTCHA server to verify the token.
 
 You should call this only once per incoming request.
 
-It will return either a C<true> or C<false> value:
+It will return two values: a success indicator and a (usually empty)
+array reference with error codes.
+
+The status indicator will be either a C<true> or C<false> value:
 
 =over 4
 
@@ -131,9 +173,13 @@ It will return either a C<true> or C<false> value:
 
 The reCAPTCHA service could not verify that the Captcha was solved by a
 human; either because it was a bot or because of some processing error.
-You should check for processing errors via C<recaptcha_get_errors>.
-You should not continue with processing your users request but probably
-re-display the form with an added error message.
+
+You should check the second return value for processing errors.
+If there are none, the captcha was not solved correctly, probably indicating
+a bot.
+
+In either case you should not continue processing the request but probably
+re-display the form with an approriate error message.
 
 =item C<true> (1)
 
@@ -142,18 +188,14 @@ was solved by a human. You may proceed with processing the incoming request.
 
 =back
 
-=head2 recaptcha_get_errors
+The second return value may contain zero, one or more error codes.
+Possible values are listed below under L</ERRORS>.
 
-This helper returns a reference to an array which may contain zero, one
-or more error codes.
-The array is reset on every call to C<recaptcha_verify>.
-The array can contain the errors listed below under L</ERRORS>.
-
-=head1 ASYNC
+=head1 ASYNC WITH PROMISES
 
 You can also verify the reCAPTCHA non-blocking by using recaptcha_verify_p.
 This will only work on a Mojolicious version that includes L<Mojo::Promise>
-promises.
+promises, so v7.53 and newer.
 
 =head2 recaptcha_verify_p
 
@@ -168,7 +210,7 @@ promises.
             }
         )->catch(
             sub { # fail ...
-                my @errors = @_;
+                my @errors = @{ @_[0] };
                 if (@errors) { # there was a processing error ...
                     $c->reply->exception(join "\n", @errors);
                 }

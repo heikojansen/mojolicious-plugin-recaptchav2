@@ -22,3 +22,5 @@ nytprof.out
 *.swp
 *.tar.gz
 *~
+cpanfile.snapshot
+/local/
