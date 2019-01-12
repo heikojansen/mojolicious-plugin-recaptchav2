@@ -119,12 +119,7 @@ sub register {
 					return 0;
 				}
 
-				my $oo = 0;
-				eval {
-					my $obj = Mojo::JSON->new;
-					$oo = $obj->can('true');
-				};
-				unless ( $json->{'success'} == ( $oo ? Mojo::JSON->true : Mojo::JSON::true ) ) {
+				unless ( $json->{'success'} == Mojo::JSON->true  ) {
 					$plugin->verification_errors( $json->{'error-codes'} // [] );
 				}
 				return $json->{'success'};
@@ -340,7 +335,7 @@ Somebody tinkered with the request data somewhere.
 =back
 
 Additionally the following error codes may be encountered which are defined
-internally by this module. Note: these codes start with "x-" to 
+internally by this module. Note: these codes start with "x-" to
 distinguish them from official error codes.
 
 =over 4
