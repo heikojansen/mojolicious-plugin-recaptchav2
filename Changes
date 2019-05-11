@@ -1,9 +1,12 @@
 
 {{$NEXT}}
 
+1.03      2019-05-11 19:00:34+02:00 Europe/Berlin (TRIAL RELEASE)
+	- Adapt a few more test cases (RT#129176)
+
 1.02      2019-05-05 19:30:24+02:00 Europe/Berlin (TRIAL RELEASE)
 	- Use less strict test as the result sometimes came out as 0
-      and other times as '0' (RT#129176)
+	  and other times as '0' (RT#129176)
 
 1.01      2019-04-14 13:41:52+02:00 Europe/Berlin (TRIAL RELEASE)
 	- Fixed warning when checking for Mojo::JSON oo interface

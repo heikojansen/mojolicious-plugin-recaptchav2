@@ -36,7 +36,7 @@ $t->get_ok( '/' )->status_is( 200 )->content_is( <<'RECAPTCHA');
 RECAPTCHA
 
 $t->post_ok( '/test' => {} => form => { 'g-recaptcha-response' => 'foo' } )->status_is( 200 )
-  ->json_is( '/verify'   => Mojo::JSON->false )->json_is( '/errors/0' => 'invalid-input-response' )
+  ->json_like( '/verify' => qr/\A0\Z/ )->json_is( '/errors/0' => 'invalid-input-response' )
   ->json_is( '/errors/1' => 'invalid-input-secret' );
 
 done_testing;
