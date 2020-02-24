@@ -1,6 +1,10 @@
 
 {{$NEXT}}
 
+1.04      2020-02-24 17:27:07+01:00 Europe/Berlin
+	- No differences to trial release 1.03
+	- Thanks LEEJO for reminding me to release this (RT#131221)
+
 1.03      2019-05-11 19:00:34+02:00 Europe/Berlin (TRIAL RELEASE)
 	- Adapt a few more test cases (RT#129176)
 
