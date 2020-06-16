@@ -3,3 +3,4 @@ cpanfile
 cpanfile.snapshot
 dist.ini
 ~$
+local/
